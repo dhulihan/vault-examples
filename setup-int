@@ -1,0 +1,35 @@
+#!/bin/bash -xe
+
+# Sets up vault to generate and sign certs using a root AND intermediate.
+vault secrets enable pki
+
+# 1 year TTLs by default
+vault secrets tune -max-lease-ttl=87600h pki
+
+# generate root certificate
+vault write -format=json pki/root/generate/internal common_name=pki.getweave.com ttl=43800h
+
+# intermediate secret engine
+vault secrets enable -path=pki_int pki
+vault secrets tune -max-lease-ttl=43800h pki_int
+
+# generate intermediate CSR
+vault write -field=csr pki_int/intermediate/generate/internal common_name="myvault.com Intermediate Authority" ttl=43800h > pki_int.csr
+
+# sign intermediate CSR with root cert
+vault write -field=certificate pki/root/sign-intermediate csr=@pki_int.csr format=pem_bundle ttl=43800h > signed_certificate.pem
+
+# set intermediate CA to root-signed cert
+vault write -format=json pki_int/intermediate/set-signed certificate=@signed_certificate.pem
+
+# setup CRL/OCSP URLs (must be accessible to all clients)
+vault write -format=json pki_int/config/urls issuing_certificates="http://vault.getweave.com:8200/v1/pki_int/ca" crl_distribution_points="http://vault.getweave.com:8200/v1/pki_int/crl"
+
+# configure role to use
+vault write -format=json pki_int/roles/weavephone-dot-net \
+    allowed_domains=weavephone.net \
+    allow_subdomains=true max_ttl=72h
+
+# issue cert. Root CA is not returned, since it's typically trusted by the underlying OS
+vault write -format=json pki_int/issue/weavephone-dot-net \
+       common_name=foo.weavephone.net

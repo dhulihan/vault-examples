@@ -1,2 +1,4 @@
 *.csr
 *.pem
+*.key
+*.json

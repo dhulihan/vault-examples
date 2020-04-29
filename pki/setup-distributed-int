@@ -27,7 +27,10 @@ vault write -format=json pki_int/intermediate/set-signed certificate=@signed_cer
 
 # setup CRL/OCSP URLs (must be accessible to all clients)
 vault write -format=json pki_int/config/urls issuing_certificates="http://localhost:8200/v1/pki_int/ca" crl_distribution_points="http://localhost:8200/v1/pki_int/crl"
-# configure role to use
+# setup role
+vault write -format=json pki_int/roles/weavephone-dot-net \
+    allowed_domains=weavephone.net \
+    allow_subdomains=true max_ttl=72h
 
 # set up new engine that will not use root certificate
 vault secrets enable -path=pki_other pki
@@ -37,12 +40,13 @@ vault secrets tune -max-lease-ttl=43800h pki_other
 cat pki_int.key > ca_bundle.pem
 cat signed_certificate.pem >> ca_bundle.pem
 
-# TODO add root to CA chain
+# TODO add root to CA chain. we may not need this depending on ClientAuth mode
 
 # set the CA for this pki engine
 vault write -format=json pki_other/config/ca \
     pem_bundle=@ca_bundle.pem \
 
+# setup role
 vault write -format=json pki_other/roles/weavephone-dot-net \
     allowed_domains=weavephone.net \
     allow_subdomains=true max_ttl=72h

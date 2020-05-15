@@ -7,7 +7,7 @@ vault secrets enable pki
 vault secrets tune -max-lease-ttl=87600h pki
 
 # generate root certificate
-vault write -format=json pki/root/generate/exported common_name=pki-root.getweave.com ttl=43800h > root-cert.json
+vault write -format=json pki/root/generate/exported common_name=pki-root.example.net ttl=43800h > root-cert.json
 
 # intermediate secret engine
 vault secrets enable -path=pki_int pki
@@ -28,8 +28,8 @@ vault write -format=json pki_int/intermediate/set-signed certificate=@signed_cer
 # setup CRL/OCSP URLs (must be accessible to all clients)
 vault write -format=json pki_int/config/urls issuing_certificates="http://localhost:8200/v1/pki_int/ca" crl_distribution_points="http://localhost:8200/v1/pki_int/crl"
 # setup role
-vault write -format=json pki_int/roles/weavephone-dot-net \
-    allowed_domains=weavephone.net \
+vault write -format=json pki_int/roles/example-dot-net \
+    allowed_domains=example.net \
     allow_subdomains=true max_ttl=72h
 
 # set up new engine that will not use root certificate
@@ -47,11 +47,15 @@ vault write -format=json pki_other/config/ca \
     pem_bundle=@ca_bundle.pem \
 
 # setup role
-vault write -format=json pki_other/roles/weavephone-dot-net \
-    allowed_domains=weavephone.net \
+# one role per app until we have better authorization
+vault write -format=json pki_other/roles/example-dot-net \
+    allowed_domains=example.net \
     allow_subdomains=true max_ttl=72h
 
 # issue cert. Root CA is not returned, since this is typically trusted by the underlying OS
-vault write -format=json pki_other/issue/weavephone-dot-net \
-       common_name=foo.weavephone.net
-       ttl=1m
+vault write -format=json pki_other/issue/example-dot-net \
+       common_name=foo.example.net > client.json
+
+
+jq -r ".data.certificate" client.json > client-cert.pem
+jq -r ".data.private_key" client.json > client-key.pem

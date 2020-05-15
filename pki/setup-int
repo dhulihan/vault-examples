@@ -7,7 +7,7 @@ vault secrets enable pki
 vault secrets tune -max-lease-ttl=87600h pki
 
 # generate root certificate
-vault write -format=json pki/root/generate/exported common_name=pki-root.getweave.com ttl=43800h > root-cert.json
+vault write -format=json pki/root/generate/exported common_name=pki-root.example.net ttl=43800h > root-cert.json
 
 # intermediate secret engine
 vault secrets enable -path=pki_int pki
@@ -25,11 +25,11 @@ vault write -format=json pki_int/intermediate/set-signed certificate=@signed_cer
 # setup CRL/OCSP URLs (must be accessible to all clients)
 vault write -format=json pki_int/config/urls issuing_certificates="http://localhost:8200/v1/pki_int/ca" crl_distribution_points="http://localhost:8200/v1/pki_int/crl"
 # configure role to use
-vault write -format=json pki_int/roles/weavephone-dot-net \
-    allowed_domains=weavephone.net \
+vault write -format=json pki_int/roles/example-dot-net \
+    allowed_domains=example.net \
     allow_subdomains=true max_ttl=72h
 
 # issue cert. Root CA is not returned, since this is typically trusted by the underlying OS
-vault write -format=json pki_int/issue/weavephone-dot-net \
-       common_name=foo.weavephone.net
+vault write -format=json pki_int/issue/example-dot-net \
+       common_name=foo.example.net
        ttl=1m
